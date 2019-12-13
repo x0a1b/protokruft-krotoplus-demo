@@ -1,86 +1,60 @@
-import com.github.marcoferrer.krotoplus.coroutines.launchProducerJob
 import com.github.marcoferrer.krotoplus.coroutines.withCoroutineContext
+import com.google.inject.Guice
+import dev.misfitlabs.kotlinguice4.getInstance
 import io.grpc.Channel
 import io.grpc.Server
+import io.grpc.ServerInterceptors
+import io.grpc.StatusRuntimeException
 import io.grpc.examples.helloworld.GreeterCoroutineGrpc
-import io.grpc.examples.helloworld.send
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
-val server: Server = InProcessServerBuilder
-    .forName("helloworld")
-    .addService(GreeterService())
-    .directExecutor()
-    .build()
-    .start()
+fun main() {
+    val injector = Guice.createInjector(ServiceModule())
 
-val channel: Channel = InProcessChannelBuilder
-    .forName("helloworld")
-    .directExecutor()
-    .build()
+    val greeterService = ServerInterceptors.intercept(
+        injector.getInstance<GreeterCoroutineGrpc.GreeterImplBase>(),
+        injector.getInstance<InstrumentationInterceptor>()
+    )
+    val server: Server = InProcessServerBuilder
+        .forName("helloworld")
+        .addService(greeterService)
+        .directExecutor()
+        .build()
+        .start()
 
-suspend fun main(){
-
-    // Optional coroutineContext. Default is Dispatchers.Unconfined
-    val stub = GreeterCoroutineGrpc
-        .newStub(channel)
-        .withCoroutineContext()
-
-    performUnaryCall(stub)
-
-    performBidiCall(stub)
-
-    performClientStreamingCall(stub)
-
-    performServerStreamingCall(stub)
-
+    runBlocking {
+        callClient()
+    }
 
     server.shutdown()
 }
 
-suspend fun performUnaryCall(stub: GreeterCoroutineGrpc.GreeterCoroutineStub){
+suspend fun callClient() {
+    val channel: Channel = InProcessChannelBuilder
+        .forName("helloworld")
+        .directExecutor()
+        .build()
 
-    val unaryResponse = stub.sayHello { name = "John" }
+    // Optional coroutineContext. Default is Dispatchers.Unconfined
+    val stub = GreeterCoroutineGrpc
+        .newStub(channel)
+        .withCoroutineContext(Dispatchers.Default)
 
+    repeat(10) {
+        try {
+            performUnaryCall(stub)
+        } catch (e: StatusRuntimeException) {
+            println("Unable to process request ${e.message}")
+            println("Error trailers ${e.trailers}")
+        }
+        Thread.sleep(100)
+    }
+}
+
+suspend fun performUnaryCall(stub: GreeterCoroutineGrpc.GreeterCoroutineStub) {
+    val unaryResponse = stub.sayHello { name = "dead" }
     println("Unary Response: ${unaryResponse.message}")
-}
-
-suspend fun performServerStreamingCall(stub: GreeterCoroutineGrpc.GreeterCoroutineStub){
-
-    val responseChannel = stub.sayHelloServerStreaming { name = "John" }
-
-    responseChannel.consumeEach {
-        println("Server Streaming Response: ${it.message}")
-    }
-}
-
-suspend fun performClientStreamingCall(stub: GreeterCoroutineGrpc.GreeterCoroutineStub) = coroutineScope{
-
-    // Client Streaming RPC
-    val (requestChannel, response) = stub.sayHelloClientStreaming()
-
-    launchProducerJob(requestChannel){
-        repeat(5){
-            send { name = "person #$it" }
-        }
-    }
-
-    println("Client Streaming Response: ${response.await().toString().trim()}")
-}
-
-suspend fun performBidiCall(stub: GreeterCoroutineGrpc.GreeterCoroutineStub) = coroutineScope {
-
-    val (requestChannel, responseChannel) = stub.sayHelloStreaming()
-
-    launchProducerJob(requestChannel){
-        repeat(5){
-            send { name = "person #$it" }
-        }
-    }
-
-    responseChannel.consumeEach {
-        println("Bidi Response: ${it.message}")
-    }
 }

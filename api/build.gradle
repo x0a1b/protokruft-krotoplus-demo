@@ -1,3 +1,14 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'org.protokruft:protokruft:2.9.+'
+    }
+}
+
+apply plugin: 'protokruft'
 apply plugin: 'kotlin'
 apply plugin: 'com.google.protobuf'
 apply plugin: 'idea'
@@ -42,3 +53,6 @@ protobuf {
         }
     }
 }
+
+
+generateProtobufDsl.dependsOn('generateProto')
