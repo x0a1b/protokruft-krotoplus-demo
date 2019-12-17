@@ -48,7 +48,7 @@ dependencies {
     implementation "com.google.protobuf:protobuf-java:$protobuf_version"
 
     implementation "com.doordash.logging:kontext-logger:0.2.0"
-    implementation "com.doordash:dd-util:1.3.0"
+    implementation "com.doordash:dd-util:1.3.+"
     implementation "net.logstash.logback:logstash-logback-encoder:6.1"
     compile 'ch.qos.logback:logback-classic:1.1.3'
     compile 'ch.qos.logback:logback-core:1.1.3'
