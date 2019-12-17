@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <providers>
+                <timestamp/>
+                <version/>
+                <logLevel/>
+                <loggerName/>
+                <threadName/>
+                <message/>
+                <arguments/>
+                <stackTrace/>
+                <logstashMarkers/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="${logback.loglevel}">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

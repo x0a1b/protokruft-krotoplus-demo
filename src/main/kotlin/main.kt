@@ -1,9 +1,15 @@
+import com.doordash.common.request.InstrumentationInterceptor
+import com.doordash.common.request.LogHeadersInterceptor
+import com.doordash.common.request.SentryReporterInterceptor
+import com.doordash.logging.KontextLogger
 import com.github.marcoferrer.krotoplus.coroutines.withCoroutineContext
 import com.google.inject.Guice
 import dev.misfitlabs.kotlinguice4.getInstance
+import io.grpc.Attributes
 import io.grpc.Channel
 import io.grpc.Server
 import io.grpc.ServerInterceptors
+import io.grpc.ServerTransportFilter
 import io.grpc.StatusRuntimeException
 import io.grpc.examples.helloworld.GreeterCoroutineGrpc
 import io.grpc.inprocess.InProcessChannelBuilder
@@ -11,16 +17,29 @@ import io.grpc.inprocess.InProcessServerBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 
+class DroppableTransportFilter : ServerTransportFilter() {
+    override fun transportReady(transportAttrs: Attributes): Attributes {
+        return super.transportReady(transportAttrs)
+    }
+}
+
 fun main() {
     val injector = Guice.createInjector(ServiceModule())
-
-    val greeterService = ServerInterceptors.intercept(
-        injector.getInstance<GreeterCoroutineGrpc.GreeterImplBase>(),
-        injector.getInstance<InstrumentationInterceptor>()
+    val logger = KontextLogger.logger{}
+    val rootInterceptors = arrayOf(
+        injector.getInstance<InstrumentationInterceptor>(),
+        injector.getInstance<LogHeadersInterceptor>(),
+        injector.getInstance<SentryReporterInterceptor>()
     )
+
     val server: Server = InProcessServerBuilder
         .forName("helloworld")
-        .addService(greeterService)
+        .addService(
+            ServerInterceptors.intercept(
+                injector.getInstance<GreeterCoroutineGrpc.GreeterImplBase>(),
+                *rootInterceptors
+            )
+        )
         .directExecutor()
         .build()
         .start()
@@ -30,6 +49,7 @@ fun main() {
     }
 
     server.shutdown()
+    server.awaitTermination()
 }
 
 suspend fun callClient() {

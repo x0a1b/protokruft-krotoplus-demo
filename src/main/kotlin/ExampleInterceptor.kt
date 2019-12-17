@@ -1,3 +1,4 @@
+import com.doordash.logging.KontextLogger
 import io.grpc.Context
 import io.grpc.Contexts
 import io.grpc.ForwardingServerCall
@@ -7,16 +8,20 @@ import io.grpc.ServerCallHandler
 import io.grpc.ServerInterceptor
 import io.grpc.Status
 
-val ContextDataKey = Context.key<InstrumentationInterceptor.ContextData>(
-    InstrumentationInterceptor.ContextData::javaClass.name
+val ContextDataKey = Context.key<ExampleInterceptor.ContextData>(
+    ExampleInterceptor.ContextData::javaClass.name
 );
 
-class InstrumentationInterceptor : ServerInterceptor {
+class ExampleInterceptor : ServerInterceptor {
     data class ContextData(
         val requestMetadata: Metadata,
         val responseMetadata: Metadata,
         val startedNano: Long
     )
+
+    companion object {
+        val logger = KontextLogger.logger {}
+    }
 
     class InterceptedCaller<ReqT : Any?, RespT : Any?>(
         private val call: ServerCall<ReqT, RespT>,
@@ -36,11 +41,11 @@ class InstrumentationInterceptor : ServerInterceptor {
             // Record time consumed from context data, where startedNano was initialized before call started
             val elapsedMillis = (System.nanoTime() - contextData.startedNano) / 1_000_000
             val methodName = call.methodDescriptor.fullMethodName.replace("/", ".")
-            println("[Instrumentation:$methodName] Time recorded ${elapsedMillis}ms")
+            logger.info("[Instrumentation:$methodName] Time recorded ${elapsedMillis}ms")
 
             // Record success
             if (status.isOk) {
-                println("[Instrumentation:$methodName] Record success...")
+                logger.info("[Instrumentation:$methodName] Record success...")
                 super.close(status, trailers)
                 return
             }
