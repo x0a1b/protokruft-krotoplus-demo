@@ -17,7 +17,7 @@
         </encoder>
     </appender>
 
-    <root level="${logback.loglevel}">
+    <root level="INFO">
         <appender-ref ref="CONSOLE" />
     </root>
 </configuration>

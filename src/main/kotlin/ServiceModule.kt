@@ -2,6 +2,7 @@ import com.doordash.common.monitoring.CommonMeterRegistry
 import com.doordash.common.monitoring.MeterRegistryModule
 import com.doordash.common.monitoring.SentryClient
 import com.doordash.common.request.InstrumentationInterceptor
+import com.doordash.common.request.MeterInterceptor
 import com.doordash.common.request.SentryReporterInterceptor
 import com.doordash.logging.KontextLogger
 import com.google.inject.Inject
@@ -26,6 +27,14 @@ class ServiceModule : KotlinModule() {
     @Inject
     @Singleton
     fun instrumentationReporter(meterRegistry: CommonMeterRegistry.DefaultMeterRegistry) = InstrumentationInterceptor(
+        meterRegistry,
+        KontextLogger.logger("Instrumentation")
+    )
+
+    @Provides
+    @Inject
+    @Singleton
+    fun meterReporter(meterRegistry: CommonMeterRegistry.DefaultMeterRegistry) = MeterInterceptor(
         meterRegistry,
         KontextLogger.logger("Instrumentation")
     )
